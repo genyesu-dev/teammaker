@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>우리 조 만들기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+  // ============================================================
+  //  설정: 구글 Apps Script 웹 앱 URL을 따옴표 안에 붙여넣으세요.
+  //  비워 두면 '이 기기에서만' 동작하는 모드가 됩니다.
+  // ============================================================
+  const API_URL = "https://script.google.com/macros/s/AKfycbzsTSsOSIZuT9TF67lFTEwmbQZ3zhhoP_OoSx4akYj0R0SrbqvFPzLIudXLX3lqNVM1Fw/exec";
+</script>
+<style>
+:root{
+  --bg:#EEF1F5; --surface:#FFFFFF; --ink:#18202E; --muted:#5B6576; --line:#C9D1DC;
+  --accent:#2F6FDB; --ok:#1F7A44; --warn:#B4410C;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#121821; --surface:#1C2430; --ink:#EEF2F8; --muted:#A2ADBE; --line:#364252;
+    --accent:#6E9BEB; --ok:#5CC98A; --warn:#F59E5B; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121821; --surface:#1C2430; --ink:#EEF2F8; --muted:#A2ADBE; --line:#364252;
+  --accent:#6E9BEB; --ok:#5CC98A; --warn:#F59E5B; color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans KR",system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;font-size:16px;line-height:1.55}
+.wrap{max-width:1120px;margin:0 auto;padding:28px 20px 60px}
+h1,h2,h3,.jua{font-family:"Jua","Noto Sans KR",sans-serif;font-weight:400;margin:0}
+h1{font-size:clamp(34px,6vw,52px);line-height:1.05}
+h2{font-size:24px;margin-bottom:12px}
+p{margin:0}
+[hidden]{display:none!important}
+button{font:inherit;color:inherit}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.top{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:26px}
+.top a{color:var(--muted);font-size:14px}
+.sub{color:var(--muted);margin-top:8px}
+
+/* ---------- 레고 브릭 (기능 선택) ---------- */
+.bricks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:26px 12px;margin-top:30px}
+@media (min-width:700px){.bricks{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.brick{position:relative;min-height:96px;padding:14px 12px 12px;border:2px dashed var(--line);border-radius:6px;background:transparent;color:var(--muted);cursor:pointer;text-align:left;display:flex;flex-direction:column;justify-content:space-between;gap:6px}
+.brick::before,.brick::after{content:"";position:absolute;top:-10px;width:24px;height:9px;border:2px dashed var(--line);border-bottom:0;border-radius:5px 5px 0 0;background:var(--bg)}
+.brick::before{left:18px}.brick::after{right:18px}
+.brick .ic{font-size:28px;line-height:1}
+.brick .lb{font-family:"Jua",sans-serif;font-size:19px;line-height:1.2;word-break:keep-all}
+.brick[aria-pressed="true"]{background:var(--c);border:2px solid var(--c);color:var(--k);box-shadow:inset 0 -6px 0 rgba(0,0,0,.18);animation:snap .2s ease-out}
+.brick[aria-pressed="true"]::before,.brick[aria-pressed="true"]::after{background:var(--c);border:2px solid var(--c);border-bottom:0;box-shadow:inset 0 3px 0 rgba(255,255,255,.35)}
+@keyframes snap{0%{transform:translateY(-8px)}70%{transform:translateY(1px)}100%{transform:none}}
+@media (prefers-reduced-motion:reduce){.brick[aria-pressed="true"]{animation:none}}
+
+/* ---------- 학생 화면 ---------- */
+.student{max-width:760px}
+.name{width:100%;font:inherit;font-family:"Jua",sans-serif;font-size:28px;padding:12px 14px;border:2px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);margin-top:22px}
+.go{margin-top:30px;width:100%;padding:16px;border:0;border-radius:6px;background:var(--ink);color:var(--bg);font-family:"Jua",sans-serif;font-size:22px;cursor:pointer}
+.go:disabled{opacity:.5;cursor:wait}
+.msg{margin-top:14px;min-height:1.5em;font-weight:500}
+.msg.ok{color:var(--ok)}.msg.warn{color:var(--warn)}
+.banner{margin-top:18px;padding:12px 14px;border-left:4px solid var(--warn);background:var(--surface);font-size:14px}
+
+/* ---------- 작은 칩 ---------- */
+.chip{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:4px;font-size:13px;font-weight:500;line-height:1.6;white-space:nowrap;background:var(--c);color:var(--k);border:1.5px solid var(--c)}
+button.chip{cursor:pointer}
+.chip.off{background:transparent;color:var(--muted);border:1.5px dashed var(--line)}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+
+/* ---------- 교사 화면 ---------- */
+.grid{display:grid;gap:28px}
+@media (min-width:900px){.grid{grid-template-columns:minmax(0,1.7fr) minmax(0,1fr)}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:20px}
+.add{display:flex;gap:8px;margin-bottom:14px}
+.add input{flex:1;min-width:0;font:inherit;padding:9px 12px;border:1.5px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+.btn{padding:9px 16px;border:1.5px solid var(--ink);border-radius:6px;background:transparent;cursor:pointer;font-weight:500;white-space:nowrap}
+.btn.solid{background:var(--ink);color:var(--surface)}
+.btn.quiet{border-color:var(--line);color:var(--muted)}
+.head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.head .n{font-family:"Jua",sans-serif;font-size:22px;color:var(--muted)}
+.list{list-style:none;margin:0;padding:0;max-height:560px;overflow:auto}
+.row{display:grid;grid-template-columns:7.5em 1fr auto;gap:10px;align-items:center;padding:9px 0;border-top:1px solid var(--line)}
+.row .nm{font-weight:700;overflow-wrap:anywhere}
+.del{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:16px;padding:4px 8px;border-radius:4px}
+.del:hover{color:var(--warn)}
+@media (max-width:560px){.row{grid-template-columns:1fr auto}.row .chips{grid-column:1/-1;grid-row:2}}
+.empty{color:var(--muted);padding:18px 0}
+.qr{display:flex;gap:16px;align-items:center;margin-bottom:8px}
+#qrbox{background:#fff;padding:8px;border-radius:6px;flex:none;line-height:0}
+.link{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.sync{font-size:13px;color:var(--muted);margin-top:10px}
+.counts{list-style:none;margin:0;padding:0}
+.counts li{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:5px 0}
+.counts .cnt{font-weight:700;min-width:2.6em}
+.counts .note{font-size:13px;color:var(--warn)}
+.make{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:16px}
+.make label{display:flex;gap:6px;align-items:center}
+.make input{width:4em;font:inherit;padding:8px;border:1.5px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+.plan{font-size:14px;color:var(--muted);margin-top:8px}
+.stack>*+*{margin-top:28px}
+
+/* ---------- 결과 ---------- */
+.results{margin-top:40px}
+.rhead{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.summary{font-size:18px}
+.teams{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px}
+.team{background:var(--surface);border:1px solid var(--line);border-top:8px solid var(--tc);border-radius:6px;padding:16px 16px 14px}
+.team h3{font-size:30px;display:flex;align-items:baseline;gap:8px}
+.team h3 small{font-family:"Noto Sans KR",sans-serif;font-size:14px;color:var(--muted)}
+.team ul{list-style:none;margin:10px 0 0;padding:0}
+.team li{padding:7px 0;border-top:1px dashed var(--line)}
+.team li b{display:block;font-size:20px;margin-bottom:3px}
+.cover{margin-top:10px;font-size:14px;font-weight:500}
+.cover.full{color:var(--ok)}.cover.part{color:var(--warn)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ===================== 학생 화면 ===================== -->
+  <main id="student" class="student">
+    <h1>나는 이걸 할 수 있어</h1>
+    <p class="sub">이름을 적고, 자신 있는 기능을 모두 눌러 브릭을 끼우세요.</p>
+    <div id="s-banner" class="banner" hidden>아직 공유 연결이 설정되지 않았어요. 지금 제출하면 이 기기에만 저장돼요.</div>
+    <input id="s-name" class="name" type="text" maxlength="20" placeholder="이름" aria-label="이름" autocomplete="off">
+    <div id="s-bricks" class="bricks" role="group" aria-label="할 수 있는 기능"></div>
+    <button id="s-submit" class="go" type="button">제출하기</button>
+    <p id="s-msg" class="msg" role="status"></p>
+  </main>
+
+  <!-- ===================== 교사 화면 ===================== -->
+  <main id="teacher" hidden>
+    <div class="top">
+      <div>
+        <h1>우리 조 만들기</h1>
+        <p class="sub">모든 조에 기능별로 최소 1명씩 들어가도록 짭니다.</p>
+      </div>
+      <a href="#student">학생 화면 보기</a>
+    </div>
+
+    <div class="grid">
+      <section class="panel">
+        <div class="head"><h2>제출한 학생</h2><span id="t-total" class="n">0명</span></div>
+        <form class="add" id="t-add">
+          <input id="t-addname" type="text" maxlength="20" placeholder="이름 직접 추가" aria-label="추가할 이름">
+          <button class="btn" type="submit">추가</button>
+        </form>
+        <ul id="t-list" class="list"></ul>
+        <div class="make" style="justify-content:space-between">
+          <span class="sync" id="t-sync"></span>
+          <button class="btn quiet" type="button" id="t-clear">명단 모두 지우기</button>
+        </div>
+      </section>
+
+      <div class="stack">
+        <section>
+          <h2>학생 입장</h2>
+          <div id="t-qrwrap" class="qr">
+            <div id="qrbox"></div>
+            <p class="link" id="t-link"></p>
+          </div>
+          <div id="t-nosetup" class="banner" hidden>공유 연결이 없어 학생 제출이 모이지 않아요. index.html의 API_URL에 Apps Script 주소를 넣으면 학생들이 각자 휴대폰으로 제출할 수 있어요. 지금은 왼쪽에서 이름을 직접 추가하고 기능을 눌러 입력하세요.</div>
+        </section>
+        <section>
+          <h2>기능별 인원</h2>
+          <ul id="t-counts" class="counts"></ul>
+        </section>
+        <section>
+          <div class="make">
+            <label>한 조 <input id="t-size" type="number" min="2" max="10" value="4"> 명</label>
+            <button class="btn solid" type="button" id="t-make">조 짜기</button>
+          </div>
+          <p class="plan" id="t-plan"></p>
+        </section>
+      </div>
+    </div>
+
+    <section class="results" id="t-results" hidden>
+      <div class="rhead">
+        <p class="summary jua" id="t-summary"></p>
+        <div style="display:flex;gap:8px">
+          <button class="btn" type="button" id="t-again">다시 섞기</button>
+          <button class="btn" type="button" id="t-copy">결과 복사</button>
+        </div>
+      </div>
+      <div class="teams" id="t-teams"></div>
+    </section>
+  </main>
+</div>
+
+<script>
+const SKILLS = [
+  { key:"앱다운받기",          short:"앱",        icon:"📱", color:"#2F6FDB", ink:"#fff" },
+  { key:"영상 찍기",           short:"촬영",      icon:"🎥", color:"#D9382A", ink:"#fff" },
+  { key:"영상 편집하기",       short:"편집",      icon:"✂️", color:"#F2B705", ink:"#1B1B1B" },
+  { key:"스토리짜기",          short:"스토리",    icon:"📖", color:"#24864A", ink:"#fff" },
+  { key:"스토리보드 그림그리기", short:"스토리보드", icon:"✏️", color:"#E06A10", ink:"#fff" },
+  { key:"레고 만들기",         short:"레고 제작", icon:"🧱", color:"#7E46CF", ink:"#fff" },
+  { key:"레고 움직이기",       short:"레고 동작", icon:"🕹️", color:"#0D8296", ink:"#fff" },
+  { key:"특수촬영하기",        short:"특수촬영",  icon:"✨", color:"#C93A73", ink:"#fff" },
+];
+const TEAM_COLORS = ["#2F6FDB","#D9382A","#F2B705","#24864A","#E06A10","#7E46CF","#0D8296","#C93A73","#5B6576","#8B5A2B"];
+
+const params = new URLSearchParams(location.search);
+const API_FROM_QUERY = params.get("api");
+const API = API_FROM_QUERY || API_URL;
+const SHARED = !!API;
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const skillOf = k => SKILLS.find(s => s.key === k);
+const chip = (s, extra="") => `<span class="chip" style="--c:${s.color};--k:${s.ink}" title="${s.key}" ${extra}>${s.icon} ${s.short}</span>`;
+function load(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } }
+function store(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+
+/* ---------------- 데이터 ---------------- */
+let roster = SHARED ? [] : load("jo-roster", []);
+let busy = 0;
+
+async function apiGet(){
+  const r = await fetch(API + (API.includes("?") ? "&" : "?") + "t=" + Date.now());
+  const d = await r.json(); if(!d.ok) throw new Error(d.error); return d.rows;
+}
+async function apiPost(body){
+  const r = await fetch(API, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body:JSON.stringify(body) });
+  const d = await r.json(); if(!d.ok) throw new Error(d.error); return d.rows;
+}
+function setRoster(rows){
+  roster = rows.map(r => ({ name:String(r.name), skills:(r.skills || []).filter(k => skillOf(k)) }));
+  if(!SHARED) store("jo-roster", roster);
+  renderTeacher();
+}
+async function saveStudent(name, skills){
+  if(SHARED){ setRoster(await apiPost({ action:"save", name, skills })); return; }
+  const rows = roster.slice(); const i = rows.findIndex(r => r.name === name);
+  if(i >= 0) rows[i] = { name, skills }; else rows.push({ name, skills });
+  setRoster(rows);
+}
+async function removeStudent(name){
+  if(SHARED) setRoster(await apiPost({ action:"delete", name }));
+  else setRoster(roster.filter(r => r.name !== name));
+}
+async function clearAll(){
+  if(SHARED) setRoster(await apiPost({ action:"clear" })); else setRoster([]);
+}
+async function refresh(){
+  if(!SHARED) return;
+  try{
+    setRoster(await apiGet());
+    $("#t-sync").textContent = "5초마다 자동으로 새로 불러와요 (마지막: " + new Date().toLocaleTimeString("ko-KR",{hour:"numeric",minute:"2-digit",second:"2-digit"}) + ")";
+  }catch(e){
+    $("#t-sync").textContent = "명단을 불러오지 못했어요. API_URL과 Apps Script 배포 설정(액세스: 모든 사용자)을 확인하세요.";
+  }
+}
+async function withBusy(fn){ busy++; try{ await fn(); } finally{ busy--; } }
+
+/* ---------------- 학생 화면 ---------------- */
+const mySkills = new Set();
+function buildStudent(){
+  const g = $("#s-bricks");
+  g.innerHTML = SKILLS.map((s, i) =>
+    `<button type="button" class="brick" data-i="${i}" aria-pressed="false" style="--c:${s.color};--k:${s.ink}">
+       <span class="ic" aria-hidden="true">${s.icon}</span><span class="lb">${s.key}</span></button>`).join("");
+  g.addEventListener("click", e => {
+    const b = e.target.closest(".brick"); if(!b) return;
+    const k = SKILLS[b.dataset.i].key;
+    mySkills.has(k) ? mySkills.delete(k) : mySkills.add(k);
+    b.setAttribute("aria-pressed", mySkills.has(k));
+  });
+  $("#s-name").value = load("jo-myname", "");
+  $("#s-banner").hidden = SHARED;
+}
+function sMsg(t, cls=""){ const m = $("#s-msg"); m.textContent = t; m.className = "msg " + cls; }
+$("#s-submit").addEventListener("click", async () => {
+  const name = $("#s-name").value.trim();
+  if(!name){ sMsg("이름을 먼저 적어 주세요.", "warn"); $("#s-name").focus(); return; }
+  if(!mySkills.size){ sMsg("할 수 있는 기능을 하나 이상 눌러 주세요.", "warn"); return; }
+  const btn = $("#s-submit"); btn.disabled = true; sMsg("보내는 중…");
+  try{
+    await saveStudent(name, [...mySkills]);
+    store("jo-myname", name);
+    sMsg(`${name}, 제출됐어요! 바꾸고 싶으면 다시 고르고 제출하기를 누르면 돼요.`, "ok");
+  }catch(e){
+    sMsg("제출하지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요.", "warn");
+  }finally{ btn.disabled = false; }
+});
+
+/* ---------------- 교사 화면 ---------------- */
+function teamSizes(n, size){
+  if(n === 0) return [];
+  if(n <= size) return [n];
+  const k = Math.floor(n / size), s = Array(k).fill(size);
+  for(let rem = n - k*size, i = 0; rem > 0; rem--, i = (i+1) % k) s[i]++;
+  return s;
+}
+function getSize(){ const v = parseInt($("#t-size").value, 10); return v >= 2 ? v : 4; }
+
+function renderTeacher(){
+  const n = roster.length, sizes = teamSizes(n, getSize()), k = sizes.length;
+  $("#t-total").textContent = n + "명";
+
+  $("#t-list").innerHTML = n ? roster.map((r, ri) => `
+    <li class="row">
+      <span class="nm">${esc(r.name)}</span>
+      <span class="chips">${SKILLS.map((s, si) => {
+        const on = r.skills.includes(s.key);
+        return `<button type="button" class="chip ${on ? "" : "off"}" data-r="${ri}" data-s="${si}" style="--c:${s.color};--k:${s.ink}" title="${s.key}" aria-pressed="${on}">${s.icon} ${s.short}</button>`;
+      }).join("")}</span>
+      <button type="button" class="del" data-del="${ri}" aria-label="${esc(r.name)} 삭제">✕</button>
+    </li>`).join("")
+    : `<li class="empty">아직 아무도 없어요. 학생들이 QR로 들어와 제출하거나, 위에서 이름을 직접 추가하세요.</li>`;
+
+  $("#t-counts").innerHTML = SKILLS.map(s => {
+    const c = roster.filter(r => r.skills.includes(s.key)).length;
+    const low = n > 0 && c < k;
+    return `<li>${chip(s)}<span class="cnt">${c}명</span>${low ? `<span class="note">조가 ${k}개라 ${k - c}개 조는 이 기능이 빠져요</span>` : ""}</li>`;
+  }).join("");
+
+  if(n === 0){ $("#t-plan").textContent = ""; }
+  else{
+    const groups = {}; sizes.forEach(s => groups[s] = (groups[s] || 0) + 1);
+    $("#t-plan").textContent = `${n}명 → ` + Object.keys(groups).sort((a,b)=>b-a).map(s => `${s}명 조 ${groups[s]}개`).join(", ");
+  }
+}
+
+$("#t-list").addEventListener("click", e => {
+  const c = e.target.closest("button.chip"), d = e.target.closest(".del");
+  if(c){
+    const r = roster[c.dataset.r], k = SKILLS[c.dataset.s].key;
+    const skills = r.skills.includes(k) ? r.skills.filter(x => x !== k) : [...r.skills, k];
+    r.skills = skills; renderTeacher();
+    withBusy(() => saveStudent(r.name, skills)).catch(() => { $("#t-sync").textContent = "저장하지 못했어요. 다시 눌러 주세요."; refresh(); });
+  }else if(d){
+    const r = roster[d.dataset.del];
+    if(confirm(`${r.name} 학생을 명단에서 지울까요?`)) withBusy(() => removeStudent(r.name)).catch(() => refresh());
+  }
+});
+$("#t-add").addEventListener("submit", e => {
+  e.preventDefault();
+  const name = $("#t-addname").value.trim(); if(!name) return;
+  if(roster.some(r => r.name === name)){ $("#t-addname").select(); return; }
+  $("#t-addname").value = "";
+  roster.push({ name, skills:[] }); renderTeacher();
+  withBusy(() => saveStudent(name, [])).catch(() => refresh());
+});
+$("#t-clear").addEventListener("click", () => {
+  if(confirm("제출된 명단을 모두 지울까요? 되돌릴 수 없어요.")) withBusy(clearAll).catch(() => refresh());
+});
+$("#t-size").addEventListener("input", renderTeacher);
+
+/* ---------------- 조 편성 알고리즘 ---------------- */
+function shuffle(a){ for(let i = a.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+const popcount = m => { let c = 0; while(m){ m &= m - 1; c++; } return c; };
+
+function makeTeams(people, size){
+  const n = people.length, sizes = teamSizes(n, size), k = sizes.length, S = SKILLS.length;
+  const mask = people.map(p => SKILLS.reduce((m, s, i) => p.skills.includes(s.key) ? m | (1 << i) : m, 0));
+  // 빠진 기능 수의 제곱 → 빠짐을 줄이면서 조끼리 고르게
+  const cost = t => { let m = 0; for(const i of t) m |= mask[i]; const miss = S - popcount(m); return miss * miss; };
+  let best = null, bestCost = Infinity;
+  const restarts = n > 60 ? 80 : 300;
+  for(let r = 0; r < restarts; r++){
+    const order = shuffle([...Array(n).keys()]), teams = []; let p = 0;
+    for(const s of sizes){ teams.push(order.slice(p, p + s)); p += s; }
+    const c = teams.map(cost);
+    let improved = true;
+    while(improved){
+      improved = false;
+      for(let a = 0; a < k; a++) for(let b = a + 1; b < k; b++){
+        const ta = teams[a], tb = teams[b];
+        for(let x = 0; x < ta.length; x++) for(let y = 0; y < tb.length; y++){
+          const i = ta[x], j = tb[y]; ta[x] = j; tb[y] = i;
+          const ca = cost(ta), cb = cost(tb);
+          if(ca + cb < c[a] + c[b]){ c[a] = ca; c[b] = cb; improved = true; }
+          else { ta[x] = i; tb[y] = j; }
+        }
+      }
+    }
+    const total = c.reduce((s, v) => s + v, 0);
+    if(total < bestCost){ bestCost = total; best = teams.map(t => shuffle(t.slice())); }
+    if(bestCost === 0) break;
+  }
+  return best.map(t => {
+    let m = 0; for(const i of t) m |= mask[i];
+    return { members:t.map(i => people[i]), missing:SKILLS.filter((s, si) => !(m & (1 << si))) };
+  });
+}
+
+let lastTeams = null;
+function generate(){
+  if(roster.length < 2){ alert("학생이 2명 이상 있어야 조를 짤 수 있어요."); return; }
+  lastTeams = makeTeams(roster, getSize());
+  renderTeams();
+}
+function renderTeams(){
+  const t = lastTeams, full = t.filter(x => !x.missing.length).length;
+  $("#t-results").hidden = false;
+  $("#t-summary").textContent = full === t.length
+    ? `${t.length}개 조 모두 8가지 기능을 갖췄어요`
+    : `${t.length}개 조 중 ${full}개 조가 8가지 기능을 모두 갖췄어요`;
+  $("#t-teams").innerHTML = t.map((team, ti) => `
+    <section class="team" style="--tc:${TEAM_COLORS[ti % TEAM_COLORS.length]}">
+      <h3>${ti + 1}조 <small>${team.members.length}명</small></h3>
+      <ul>${team.members.map(m => `<li><b>${esc(m.name)}</b><span class="chips">${m.skills.map(k => chip(skillOf(k))).join("") || '<span class="chip off">선택 없음</span>'}</span></li>`).join("")}</ul>
+      <p class="cover ${team.missing.length ? "part" : "full"}">${team.missing.length ? "빠진 기능: " + team.missing.map(s => s.short).join(", ") : "8가지 기능 모두 있음"}</p>
+    </section>`).join("");
+  $("#t-results").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block:"start" });
+}
+$("#t-make").addEventListener("click", generate);
+$("#t-again").addEventListener("click", generate);
+$("#t-copy").addEventListener("click", async () => {
+  if(!lastTeams) return;
+  const text = lastTeams.map((t, i) => `${i + 1}조: ${t.members.map(m => m.name).join(", ")}`).join("\n");
+  try{ await navigator.clipboard.writeText(text); $("#t-copy").textContent = "복사됨"; }
+  catch(e){ prompt("아래 내용을 복사하세요", text); }
+  setTimeout(() => $("#t-copy").textContent = "결과 복사", 1500);
+});
+
+/* ---------------- QR / 화면 전환 ---------------- */
+let qrDone = false;
+function drawQR(){
+  $("#t-qrwrap").hidden = !SHARED; $("#t-nosetup").hidden = SHARED;
+  if(!SHARED || qrDone) return;
+  const url = location.origin + location.pathname + (API_FROM_QUERY ? "?api=" + encodeURIComponent(API_FROM_QUERY) : "") + "#student";
+  $("#t-link").textContent = url;
+  if(window.QRCode){ new QRCode($("#qrbox"), { text:url, width:150, height:150 }); }
+  else { $("#qrbox").hidden = true; }
+  qrDone = true;
+}
+function route(){
+  const t = location.hash === "#teacher";
+  $("#student").hidden = t; $("#teacher").hidden = !t;
+  if(t){ if(!SHARED) roster = load("jo-roster", []); renderTeacher(); drawQR(); refresh(); }
+}
+setInterval(() => {
+  if(location.hash === "#teacher" && SHARED && !document.hidden && !busy) refresh();
+}, 5000);
+window.addEventListener("hashchange", route);
+buildStudent();
+route();
+</script>
+</body>
+</html>
